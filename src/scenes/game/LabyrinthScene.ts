@@ -42,8 +42,10 @@ export class LabyrinthScene extends Scene {
         this.CreatePlayer();
 
         // Setup input
-        this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D') as any;
-        this.cursors = this.input.keyboard.createCursorKeys();
+        if (this.input.keyboard) {
+            this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D') as any;
+            this.cursors = this.input.keyboard.createCursorKeys();
+        }
 
         // Update fog around initial player position
         this.updateFogOfWar();
