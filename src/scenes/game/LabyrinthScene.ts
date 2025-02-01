@@ -8,6 +8,7 @@ export class LabyrinthScene extends Scene {
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     private coinCount: number = 0;
     private coinText!: Phaser.GameObjects.Text;
+    private coins: Phaser.GameObjects.Rectangle[] = [];
     private wasdKeys!: {
         W: Phaser.Input.Keyboard.Key;
         A: Phaser.Input.Keyboard.Key;
@@ -18,7 +19,7 @@ export class LabyrinthScene extends Scene {
     private readonly CELL_SIZE = 32;
     private readonly GRID_WIDTH = 31;
     private readonly GRID_HEIGHT = 23;
-    private readonly VISIBILITY_RADIUS = 5;
+    private readonly VISIBILITY_RADIUS = 10;
 
     constructor() {
         super({ key: 'LabyrinthScene' });
@@ -40,6 +41,7 @@ export class LabyrinthScene extends Scene {
         this.CreateWalls(maze);
         this.CreateFogOfWar();
         this.CreatePlayer();
+        this.CreateCoin(maze);
 
         // Setup input
         this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D') as any;
@@ -110,6 +112,41 @@ export class LabyrinthScene extends Scene {
             this.CELL_SIZE / 2,
             0xff0000
         );
+    }
+
+    private CreateCoin(maze: number[][]) {
+        // Find all empty positions in the maze
+        let validPositions: { x: number; y: number }[] = [];
+        
+        for (let y = 0; y < this.GRID_HEIGHT; y++) {
+            for (let x = 0; x < this.GRID_WIDTH; x++) {
+                if (maze[y][x] === 0) {
+                    validPositions.push({ x, y });
+                }
+            }
+        }
+
+        // Create 3 coins in random positions
+        const numberOfCoins = 3;
+        for (let i = 0; i < numberOfCoins && validPositions.length > 0; i++) {
+            const randomIndex = Math.floor(Math.random() * validPositions.length);
+            const randomPosition = validPositions[randomIndex];
+            // Remove the used position to avoid placing multiple coins in the same spot
+            validPositions.splice(randomIndex, 1);
+            
+            const coinSize = this.CELL_SIZE / 6; // 1/3 of player size (player is CELL_SIZE/2)
+            
+            const coin = this.add.rectangle(
+                randomPosition.x * this.CELL_SIZE + this.CELL_SIZE / 2,
+                randomPosition.y * this.CELL_SIZE + this.CELL_SIZE / 2,
+                coinSize,
+                coinSize,
+                0xffff00 // Yellow color
+            );
+            // Initially hide the coin
+            coin.setAlpha(0);
+            this.coins.push(coin);
+        }
     }
 
     update() {
@@ -277,6 +314,24 @@ export class LabyrinthScene extends Scene {
                     // Unexplored tiles
                     this.fogLayer[y][x].setAlpha(1);
                 }
+            }
+        }
+
+        // Update coins visibility based on player distance
+        for (const coin of this.coins) {
+            const coinGridX = Math.floor(coin.x / this.CELL_SIZE);
+            const coinGridY = Math.floor(coin.y / this.CELL_SIZE);
+            const distanceToCoin = Math.sqrt(
+                Math.pow(coinGridX - playerGridX, 2) + 
+                Math.pow(coinGridY - playerGridY, 2)
+            );
+
+            if (distanceToCoin <= this.VISIBILITY_RADIUS) {
+                coin.setAlpha(1); // Show coin when in visible range
+            } else if (this.visitedTiles[coinGridY][coinGridX]) {
+                coin.setAlpha(0.5); // Semi-visible in visited areas
+            } else {
+                coin.setAlpha(0); // Hidden in unexplored areas
             }
         }
     }
