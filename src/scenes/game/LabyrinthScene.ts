@@ -264,10 +264,52 @@ export class LabyrinthScene extends Scene {
             }
         });
 
+        // Check coin collisions
+        const playerBounds = this.player.getBounds();
+        for (let i = this.coins.length - 1; i >= 0; i--) {
+            const coin = this.coins[i];
+            if (coin.alpha > 0 && Phaser.Geom.Rectangle.Overlaps(playerBounds, coin.getBounds())) {
+                // Collect the coin
+                this.collectCoin(coin, i);
+            }
+        }
+
         // Update fog of war if player moved
         if (moved) {
             this.updateFogOfWar();
         }
+    }
+
+    private collectCoin(coin: Phaser.GameObjects.Rectangle, index: number) {
+        // Increment counter
+        this.coinCount++;
+        
+        // Update counter display
+        this.coinText.setText(`Coins: ${this.coinCount}`);
+        
+        // Play a short high-pitched sound
+        this.playCoinSound();
+        
+        // Remove the coin
+        coin.destroy();
+        this.coins.splice(index, 1);
+    }
+
+    private playCoinSound() {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5 note
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.2);
     }
 
     private generateMaze(): number[][] {
