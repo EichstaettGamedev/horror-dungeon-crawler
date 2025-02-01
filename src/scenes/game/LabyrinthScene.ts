@@ -130,8 +130,8 @@ export class LabyrinthScene extends Scene {
         // Start the animation
         this.player.play('player_animated');
         
-        // Scale the player to fit nicely in the cell
-        this.player.setScale(this.CELL_SIZE / 128);  // Since original sprite is 128x128
+        // Scale the player to fit nicely in the cell, 10% smaller than before
+        this.player.setScale(this.CELL_SIZE / 128 * 0.9);  // Reduced by 10%
     }
 
     private CreateCoin(maze: number[][]) {
@@ -233,7 +233,42 @@ export class LabyrinthScene extends Scene {
         const speed = 4;
         let moved = false;
 
-        // Handle movement
+        moved = this.HandleButtonDown(speed, moved);
+        this.CheckForWallCollisions(speed);
+        this.CheckForCoinCollisions();
+
+        // Update fog of war if player moved
+        if (moved) {
+            this.updateFogOfWar();
+        }
+    }
+
+    private CheckForCoinCollisions() {
+        const playerBounds = this.player.getBounds();
+        for (let i = this.coins.length - 1; i >= 0; i--) {
+            const coin = this.coins[i];
+            if (coin.alpha > 0 && Phaser.Geom.Rectangle.Overlaps(playerBounds, coin.getBounds())) {
+                // Collect the coin
+                this.collectCoin(coin, i);
+            }
+        }
+    }
+
+    private CheckForWallCollisions(speed: number) {
+        this.walls.forEach(wall => {
+            const bounds = wall.getBounds();
+            const playerBounds = this.player.getBounds();
+            if (Phaser.Geom.Rectangle.Overlaps(bounds, playerBounds)) {
+                // Move player back
+                if (this.wasdKeys.A.isDown || this.cursors.left.isDown) this.player.x += speed;
+                if (this.wasdKeys.D.isDown || this.cursors.right.isDown) this.player.x -= speed;
+                if (this.wasdKeys.W.isDown || this.cursors.up.isDown) this.player.y += speed;
+                if (this.wasdKeys.S.isDown || this.cursors.down.isDown) this.player.y -= speed;
+            }
+        });
+    }
+
+    private HandleButtonDown(speed: number, moved: boolean) {
         if (this.wasdKeys.A.isDown || this.cursors.left.isDown) {
             this.player.x -= speed;
             moved = true;
@@ -250,34 +285,7 @@ export class LabyrinthScene extends Scene {
             this.player.y += speed;
             moved = true;
         }
-
-        // Check wall collisions
-        this.walls.forEach(wall => {
-            const bounds = wall.getBounds();
-            const playerBounds = this.player.getBounds();
-            if (Phaser.Geom.Rectangle.Overlaps(bounds, playerBounds)) {
-                // Move player back
-                if (this.wasdKeys.A.isDown || this.cursors.left.isDown) this.player.x += speed;
-                if (this.wasdKeys.D.isDown || this.cursors.right.isDown) this.player.x -= speed;
-                if (this.wasdKeys.W.isDown || this.cursors.up.isDown) this.player.y += speed;
-                if (this.wasdKeys.S.isDown || this.cursors.down.isDown) this.player.y -= speed;
-            }
-        });
-
-        // Check coin collisions
-        const playerBounds = this.player.getBounds();
-        for (let i = this.coins.length - 1; i >= 0; i--) {
-            const coin = this.coins[i];
-            if (coin.alpha > 0 && Phaser.Geom.Rectangle.Overlaps(playerBounds, coin.getBounds())) {
-                // Collect the coin
-                this.collectCoin(coin, i);
-            }
-        }
-
-        // Update fog of war if player moved
-        if (moved) {
-            this.updateFogOfWar();
-        }
+        return moved;
     }
 
     private collectCoin(coin: Phaser.GameObjects.Rectangle, index: number) {
