@@ -48,6 +48,9 @@ export class LabyrinthScene extends Scene {
             this.cursors = this.input.keyboard.createCursorKeys();
         }
 
+        // Listen for the gameWon event
+        this.events.on('gameWon', this.onGameWon, this);
+
         // Update fog around initial player position
         this.updateFogOfWar();
     }
@@ -305,5 +308,12 @@ export class LabyrinthScene extends Scene {
         }
 
         this.coinHelper.updateVisibility(playerGridX, playerGridY, this.visitedTiles, this.VISIBILITY_RADIUS);
+    }
+
+    private onGameWon() {
+        // Add a small delay before transitioning to the win scene
+        this.time.delayedCall(500, () => {
+            this.scene.start('GameWon');
+        });
     }
 }

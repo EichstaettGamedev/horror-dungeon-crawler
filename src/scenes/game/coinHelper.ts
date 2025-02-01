@@ -128,6 +128,12 @@ export class CoinHelper {
         this.playCoinSound();
         coin.destroy();
         this.coins.splice(index, 1);
+
+        // Check if all coins are collected
+        if (this.coinCount >= 3) {
+            // Emit a custom event that the game is won
+            this.scene.events.emit('gameWon');
+        }
     }
 
     private playCoinSound() {
