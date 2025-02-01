@@ -135,38 +135,98 @@ export class LabyrinthScene extends Scene {
     }
 
     private CreateCoin(maze: number[][]) {
-        // Find all empty positions in the maze
-        let validPositions: { x: number; y: number }[] = [];
+        // Find all dead ends in the maze that are far from spawn
+        let deadEnds: { x: number; y: number; distance: number }[] = [];
+        const startX = 1;
+        const startY = 1;
+        const MIN_DISTANCE_FROM_SPAWN = Math.max(this.GRID_WIDTH, this.GRID_HEIGHT) / 3; // At least 1/3 of map size away
+        const MIN_DISTANCE_BETWEEN_COINS = Math.max(this.GRID_WIDTH, this.GRID_HEIGHT) / 4; // At least 1/4 of map size apart
         
         for (let y = 0; y < this.GRID_HEIGHT; y++) {
             for (let x = 0; x < this.GRID_WIDTH; x++) {
                 if (maze[y][x] === 0) {
-                    validPositions.push({ x, y });
+                    // Check if it's a dead end
+                    const exits = this.countExits(maze, x, y);
+                    if (exits === 1) {  // Dead end has only one exit
+                        // Calculate distance from spawn
+                        const distanceFromSpawn = Math.sqrt(
+                            Math.pow(x - startX, 2) + 
+                            Math.pow(y - startY, 2)
+                        );
+                        // Only consider dead ends that are far enough from spawn
+                        if (distanceFromSpawn >= MIN_DISTANCE_FROM_SPAWN) {
+                            deadEnds.push({ x, y, distance: distanceFromSpawn });
+                        }
+                    }
                 }
             }
         }
 
-        // Create 3 coins in random positions
-        const numberOfCoins = 3;
-        for (let i = 0; i < numberOfCoins && validPositions.length > 0; i++) {
-            const randomIndex = Math.floor(Math.random() * validPositions.length);
-            const randomPosition = validPositions[randomIndex];
-            // Remove the used position to avoid placing multiple coins in the same spot
-            validPositions.splice(randomIndex, 1);
-            
-            const coinSize = this.CELL_SIZE / 6; // 1/3 of player size (player is CELL_SIZE/2)
-            
+        // Sort dead ends by distance from spawn (farthest first)
+        deadEnds.sort((a, b) => b.distance - a.distance);
+
+        // Place coins ensuring minimum distance between them
+        const selectedPositions: { x: number; y: number }[] = [];
+        const numberOfCoins = Math.min(3, deadEnds.length);
+
+        for (const deadEnd of deadEnds) {
+            if (selectedPositions.length >= numberOfCoins) break;
+
+            // Check distance from all previously placed coins
+            let isFarEnough = true;
+            for (const pos of selectedPositions) {
+                const distanceToOtherCoin = Math.sqrt(
+                    Math.pow(deadEnd.x - pos.x, 2) + 
+                    Math.pow(deadEnd.y - pos.y, 2)
+                );
+                if (distanceToOtherCoin < MIN_DISTANCE_BETWEEN_COINS) {
+                    isFarEnough = false;
+                    break;
+                }
+            }
+
+            // If this position is far enough from other coins, use it
+            if (isFarEnough) {
+                selectedPositions.push({ x: deadEnd.x, y: deadEnd.y });
+            }
+        }
+
+        // Create coins at the selected positions
+        for (const position of selectedPositions) {
+            const coinSize = this.CELL_SIZE / 6;
             const coin = this.add.rectangle(
-                randomPosition.x * this.CELL_SIZE + this.CELL_SIZE / 2,
-                randomPosition.y * this.CELL_SIZE + this.CELL_SIZE / 2,
+                position.x * this.CELL_SIZE + this.CELL_SIZE / 2,
+                position.y * this.CELL_SIZE + this.CELL_SIZE / 2,
                 coinSize,
                 coinSize,
-                0xffff00 // Yellow color
+                0xffff00
             );
-            // Initially hide the coin
             coin.setAlpha(0);
             this.coins.push(coin);
         }
+    }
+
+    private countExits(maze: number[][], x: number, y: number): number {
+        let exits = 0;
+        const directions = [
+            [0, -1], // Up
+            [1, 0],  // Right
+            [0, 1],  // Down
+            [-1, 0]  // Left
+        ];
+
+        for (const [dx, dy] of directions) {
+            const newX = x + dx;
+            const newY = y + dy;
+            if (
+                newX >= 0 && newX < this.GRID_WIDTH &&
+                newY >= 0 && newY < this.GRID_HEIGHT &&
+                maze[newY][newX] === 0
+            ) {
+                exits++;
+            }
+        }
+        return exits;
     }
 
     update() {
