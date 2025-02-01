@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 
 export class LabyrinthScene extends Scene {
-    private player!: Phaser.GameObjects.Rectangle;
+    private player!: Phaser.GameObjects.Sprite;
     private walls: Phaser.GameObjects.Rectangle[] = [];
     private fogLayer: Phaser.GameObjects.Rectangle[][] = [];
     private visitedTiles: boolean[][] = [];
@@ -44,8 +44,10 @@ export class LabyrinthScene extends Scene {
         this.CreateCoin(maze);
 
         // Setup input
-        this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D') as any;
-        this.cursors = this.input.keyboard.createCursorKeys();
+        if (this.input.keyboard) {
+            this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D') as any;
+            this.cursors = this.input.keyboard.createCursorKeys();
+        }
 
         // Update fog around initial player position
         this.updateFogOfWar();
@@ -105,13 +107,31 @@ export class LabyrinthScene extends Scene {
     }
 
     private CreatePlayer() {
-        this.player = this.add.rectangle(
+        this.player = this.add.sprite(
             this.CELL_SIZE + this.CELL_SIZE / 2,
             this.CELL_SIZE + this.CELL_SIZE / 2,
-            this.CELL_SIZE / 2,
-            this.CELL_SIZE / 2,
-            0xff0000
+            'packed',
+            'player_0'
         );
+        
+        // Add the walking animation
+        this.anims.create({
+            key: 'player_animated',
+            frames: [
+                { key: 'packed', frame: 'player_0' },
+                { key: 'packed', frame: 'player_1' },
+                { key: 'packed', frame: 'player_2' },
+                { key: 'packed', frame: 'player_1' }
+            ],
+            frameRate: 6,
+            repeat: -1
+        });
+        
+        // Start the animation
+        this.player.play('player_animated');
+        
+        // Scale the player to fit nicely in the cell
+        this.player.setScale(this.CELL_SIZE / 128);  // Since original sprite is 128x128
     }
 
     private CreateCoin(maze: number[][]) {

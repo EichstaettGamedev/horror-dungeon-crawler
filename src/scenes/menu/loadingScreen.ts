@@ -7,7 +7,7 @@ export class LoadingScreenScene extends Scene {
     progressText?: GameObjects.Text;
     loadingText?: GameObjects.Text;
     loadingFileText?: GameObjects.Text;
-
+                            
     constructor(config: Phaser.Types.Scenes.SettingsConfig) {
         if (!config) {
             config = {};
