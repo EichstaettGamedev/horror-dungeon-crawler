@@ -6,6 +6,8 @@ export class LabyrinthScene extends Scene {
     private fogLayer: Phaser.GameObjects.Rectangle[][] = [];
     private visitedTiles: boolean[][] = [];
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+    private coinCount: number = 0;
+    private coinText!: Phaser.GameObjects.Text;
     private wasdKeys!: {
         W: Phaser.Input.Keyboard.Key;
         A: Phaser.Input.Keyboard.Key;
@@ -16,7 +18,7 @@ export class LabyrinthScene extends Scene {
     private readonly CELL_SIZE = 32;
     private readonly GRID_WIDTH = 31;
     private readonly GRID_HEIGHT = 23;
-    private readonly VISIBILITY_RADIUS = 1;
+    private readonly VISIBILITY_RADIUS = 5;
 
     constructor() {
         super({ key: 'LabyrinthScene' });
@@ -30,8 +32,34 @@ export class LabyrinthScene extends Scene {
         this.visitedTiles = Array(this.GRID_HEIGHT).fill(0).map(() => 
             Array(this.GRID_WIDTH).fill(false)
         );
+
+        // Add coin counter text
+        this.AddCoinCounter(); // Make sure it's always on top
         
         // Create walls
+        this.CreateWalls(maze);
+        this.CreateFogOfWar();
+        this.CreatePlayer();
+
+        // Setup input
+        this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D') as any;
+        this.cursors = this.input.keyboard.createCursorKeys();
+
+        // Update fog around initial player position
+        this.updateFogOfWar();
+    }
+
+    private AddCoinCounter() {
+        this.coinText = this.add.text(16, 16, 'Coins: 0', {
+            fontSize: '32px',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        });
+        this.coinText.setScrollFactor(0); // Keep it fixed on screen
+        this.coinText.setDepth(1000);
+    }
+
+    private CreateWalls(maze: number[][]) {
         for (let y = 0; y < this.GRID_HEIGHT; y++) {
             for (let x = 0; x < this.GRID_WIDTH; x++) {
                 if (maze[y][x] === 1) {
@@ -55,8 +83,9 @@ export class LabyrinthScene extends Scene {
                 }
             }
         }
+    }
 
-        // Create fog of war
+    private CreateFogOfWar() {
         this.fogLayer = [];
         for (let y = 0; y < this.GRID_HEIGHT; y++) {
             this.fogLayer[y] = [];
@@ -71,8 +100,9 @@ export class LabyrinthScene extends Scene {
                 this.fogLayer[y][x] = fog;
             }
         }
+    }
 
-        // Create player
+    private CreatePlayer() {
         this.player = this.add.rectangle(
             this.CELL_SIZE + this.CELL_SIZE / 2,
             this.CELL_SIZE + this.CELL_SIZE / 2,
@@ -80,13 +110,6 @@ export class LabyrinthScene extends Scene {
             this.CELL_SIZE / 2,
             0xff0000
         );
-
-        // Setup input
-        this.wasdKeys = this.input.keyboard.addKeys('W,A,S,D') as any;
-        this.cursors = this.input.keyboard.createCursorKeys();
-
-        // Update fog around initial player position
-        this.updateFogOfWar();
     }
 
     update() {
@@ -137,12 +160,12 @@ export class LabyrinthScene extends Scene {
         );
         
         const stack: [number, number][] = [];
-        const startX = 2;  
-        const startY = 2;
+        const startX = 1;  
+        const startY = 1;
         
-        // Create initial 3x3 open area
-        for(let y = startY-1; y <= startY+1; y++) {
-            for(let x = startX-1; x <= startX+1; x++) {
+        // Create initial 2x2 open area
+        for(let y = startY; y <= startY+1; y++) {
+            for(let x = startX; x <= startX+1; x++) {
                 maze[y][x] = 0;
             }
         }
@@ -153,20 +176,20 @@ export class LabyrinthScene extends Scene {
             const [currentX, currentY] = stack[stack.length - 1];
             const neighbors: [number, number][] = [];
 
-            // Check neighbors with spacing for 3-wide corridors
+            // Check neighbors with spacing for 2-wide corridors
             const directions = [
-                [0, -3], // Up
-                [3, 0],  // Right
-                [0, 3],  // Down
-                [-3, 0]  // Left
+                [0, -2], // Up
+                [2, 0],  // Right
+                [0, 2],  // Down
+                [-2, 0]  // Left
             ];
 
             for (const [dx, dy] of directions) {
                 const newX = currentX + dx;
                 const newY = currentY + dy;
                 if (
-                    newX > 1 && newX < this.GRID_WIDTH - 2 &&
-                    newY > 1 && newY < this.GRID_HEIGHT - 2 &&
+                    newX > 0 && newX < this.GRID_WIDTH - 1 &&
+                    newY > 0 && newY < this.GRID_HEIGHT - 1 &&
                     maze[newY][newX] === 1 &&
                     this.countAdjacentPaths(maze, newX, newY) <= 1
                 ) {
@@ -177,14 +200,14 @@ export class LabyrinthScene extends Scene {
             if (neighbors.length > 0) {
                 const [nextX, nextY] = neighbors[Math.floor(Math.random() * neighbors.length)];
                 
-                // Carve 3-wide path between current and next cell
+                // Carve 2-wide path between current and next cell
                 const minX = Math.min(currentX, nextX);
                 const maxX = Math.max(currentX, nextX);
                 const minY = Math.min(currentY, nextY);
                 const maxY = Math.max(currentY, nextY);
                 
-                for(let y = minY-1; y <= maxY+1; y++) {
-                    for(let x = minX-1; x <= maxX+1; x++) {
+                for(let y = minY; y <= maxY; y++) {
+                    for(let x = minX; x <= maxX; x++) {
                         if (x >= 0 && x < this.GRID_WIDTH && y >= 0 && y < this.GRID_HEIGHT) {
                             maze[y][x] = 0;
                         }
@@ -203,10 +226,10 @@ export class LabyrinthScene extends Scene {
     private countAdjacentPaths(maze: number[][], x: number, y: number): number {
         let count = 0;
         const directions = [
-            [0, -3], // Up
-            [3, 0],  // Right
-            [0, 3],  // Down
-            [-3, 0]  // Left
+            [0, -2], // Up
+            [2, 0],  // Right
+            [0, 2],  // Down
+            [-2, 0]  // Left
         ];
 
         for (const [dx, dy] of directions) {
