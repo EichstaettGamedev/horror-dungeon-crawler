@@ -4,6 +4,7 @@ import './game.css';
 import options from './options';
 import { Game, Types } from 'phaser';
 import { GameScene } from './scenes/game/gameScene';
+import { LabyrinthScene } from './scenes/game/LabyrinthScene';
 import { UIScene } from './scenes/ui/uiScene';
 import { GameOverScene } from './scenes/menu/gameOver';
 import { MainMenuScene } from './scenes/menu/mainMenu';
@@ -17,7 +18,7 @@ const main = () => {
         height: 720,
         //pixelArt: true,
         parent: document.getElementById('phaser-parent') as HTMLElement,
-        title: 'Vite / Phaser / TypeScript starter template',
+        title: 'Horror dungeon crawler',
         backgroundColor: '#000',
         dom: {
             createContainer: true,
@@ -39,6 +40,7 @@ const main = () => {
         scene: [
             LoadingScreenScene,
             MainMenuScene,
+            LabyrinthScene,
             GameScene,
             UIScene,
             GameOverScene,

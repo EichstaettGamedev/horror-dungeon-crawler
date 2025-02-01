@@ -1,9 +1,9 @@
 import options from '../../options';
 import { Scene } from 'phaser';
 
-const introHTML = `<h1>Vite / Phaser / TypeScript starter template</h1>
+const introHTML = `<h1>Horror dungeon crawler</h1>
 <br/>
-<p>Something I've built for myself to jumpstart games developed for jams, feel free to use it howevery you want.</p>`;
+<p>Navigate through the dark labyrinth using WASD keys. Be careful, you can only see what's directly around you!</p>`;
 
 const gitHubLink =
     'https://github.com/Melchizedek6809/vite-phaser-typescript-starter';
@@ -20,7 +20,7 @@ export class MainMenuScene extends Scene {
 
     startGame() {
         this.scene.run('UIScene');
-        this.scene.switch('GameScene');
+        this.scene.switch('LabyrinthScene');
     }
 
     addCreditsLinks() {
@@ -35,9 +35,8 @@ export class MainMenuScene extends Scene {
             this.startGame();
         }
         this.addCreditsLinks();
-        this.scene.run('GameScene');
 
-        const buttons = '<br/><br/><button class="green-button">Start</button>';
+        const buttons = '<br/><br/><button class="green-button">Enter the labyrinth</button>';
         const $intro = document.createElement('div');
         $intro.classList.add('main-menu-text');
         $intro.innerHTML = introHTML + buttons;
