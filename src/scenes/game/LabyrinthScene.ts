@@ -177,72 +177,18 @@ export class LabyrinthScene extends Scene {
             Array(this.GRID_WIDTH).fill(1)
         );
         
-        const stack: [number, number][] = [];
-        const startX = 1;  
+        const stack: { x: number; y: number }[] = [];
+        const visited: boolean[][] = Array(this.GRID_HEIGHT).fill(false).map(() => 
+            Array(this.GRID_WIDTH).fill(false)
+        );
+        
+        // Start from (1,1) to ensure border walls
+        const startX = 1;
         const startY = 1;
-        
-        // Create initial 2x2 open area
-        for(let y = startY; y <= startY+1; y++) {
-            for(let x = startX; x <= startX+1; x++) {
-                maze[y][x] = 0;
-            }
-        }
-        
-        stack.push([startX, startY]);
+        stack.push({ x: startX, y: startY });
+        visited[startY][startX] = true;
+        maze[startY][startX] = 0;
 
-        while (stack.length > 0) {
-            const [currentX, currentY] = stack[stack.length - 1];
-            const neighbors: [number, number][] = [];
-
-            // Check neighbors with spacing for 2-wide corridors
-            const directions = [
-                [0, -2], // Up
-                [2, 0],  // Right
-                [0, 2],  // Down
-                [-2, 0]  // Left
-            ];
-
-            for (const [dx, dy] of directions) {
-                const newX = currentX + dx;
-                const newY = currentY + dy;
-                if (
-                    newX > 0 && newX < this.GRID_WIDTH - 1 &&
-                    newY > 0 && newY < this.GRID_HEIGHT - 1 &&
-                    maze[newY][newX] === 1 &&
-                    this.countAdjacentPaths(maze, newX, newY) <= 1
-                ) {
-                    neighbors.push([newX, newY]);
-                }
-            }
-
-            if (neighbors.length > 0) {
-                const [nextX, nextY] = neighbors[Math.floor(Math.random() * neighbors.length)];
-                
-                // Carve 2-wide path between current and next cell
-                const minX = Math.min(currentX, nextX);
-                const maxX = Math.max(currentX, nextX);
-                const minY = Math.min(currentY, nextY);
-                const maxY = Math.max(currentY, nextY);
-                
-                for(let y = minY; y <= maxY; y++) {
-                    for(let x = minX; x <= maxX; x++) {
-                        if (x >= 0 && x < this.GRID_WIDTH && y >= 0 && y < this.GRID_HEIGHT) {
-                            maze[y][x] = 0;
-                        }
-                    }
-                }
-                
-                stack.push([nextX, nextY]);
-            } else {
-                stack.pop();
-            }
-        }
-
-        return maze;
-    }
-
-    private countAdjacentPaths(maze: number[][], x: number, y: number): number {
-        let count = 0;
         const directions = [
             [0, -2], // Up
             [2, 0],  // Right
@@ -250,18 +196,81 @@ export class LabyrinthScene extends Scene {
             [-2, 0]  // Left
         ];
 
-        for (const [dx, dy] of directions) {
-            const newX = x + dx;
-            const newY = y + dy;
-            if (
-                newX >= 0 && newX < this.GRID_WIDTH &&
-                newY >= 0 && newY < this.GRID_HEIGHT &&
-                maze[newY][newX] === 0
-            ) {
-                count++;
+        // Function to get valid neighbors
+        const getUnvisitedNeighbors = (x: number, y: number) => {
+            const neighbors: { x: number; y: number; dx: number; dy: number }[] = [];
+            for (const [dx, dy] of directions) {
+                const newX = x + dx;
+                const newY = y + dy;
+                if (
+                    newX > 0 && newX < this.GRID_WIDTH - 1 &&
+                    newY > 0 && newY < this.GRID_HEIGHT - 1 &&
+                    !visited[newY][newX]
+                ) {
+                    neighbors.push({ x: newX, y: newY, dx, dy });
+                }
+            }
+            return neighbors;
+        };
+
+        this.CreateOriginalMaze(stack, getUnvisitedNeighbors, maze, visited);
+        this.CreateLoopsForMaze(maze);
+
+        return maze;
+    }
+
+    private CreateOriginalMaze(stack: { x: number; y: number; }[], getUnvisitedNeighbors: (x: number, y: number) => { x: number; y: number; dx: number; dy: number; }[], maze: number[][], visited: boolean[][]) {
+        while (stack.length > 0) {
+            const current = stack[stack.length - 1];
+            const neighbors = getUnvisitedNeighbors(current.x, current.y);
+
+            if (neighbors.length > 0) {
+                // Choose a random neighbor
+                const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+
+                // Create a passage
+                maze[current.y + next.dy / 2][current.x + next.dx / 2] = 0;
+                maze[next.y][next.x] = 0;
+
+                visited[next.y][next.x] = true;
+                stack.push({ x: next.x, y: next.y });
+            } else {
+                stack.pop();
             }
         }
-        return count;
+    }
+
+    private CreateLoopsForMaze(maze: number[][]) {
+        // Add loops by connecting parallel corridors
+        const LOOP_CHANCE = 0.08; // 20% chance for each potential connection
+
+        // First pass: horizontal connections
+        for (let y = 2; y < this.GRID_HEIGHT - 2; y++) {
+            for (let x = 2; x < this.GRID_WIDTH - 2; x++) {
+                // Look for parallel horizontal corridors
+                if (maze[y][x] === 1 && // current cell is a wall
+                    maze[y-1][x] === 0 && // corridor above
+                    maze[y+1][x] === 0 && // corridor below
+                    Math.random() < LOOP_CHANCE) {
+                    // Create a vertical connection
+                    maze[y][x] = 0;
+                }
+            }
+        }
+
+        // Second pass: vertical connections
+        for (let y = 2; y < this.GRID_HEIGHT - 2; y++) {
+            for (let x = 2; x < this.GRID_WIDTH - 2; x++) {
+                // Look for parallel vertical corridors
+                if (maze[y][x] === 1 && // current cell is a wall
+                    maze[y][x-1] === 0 && // corridor to the left
+                    maze[y][x+1] === 0 && // corridor to the right
+                    Math.random() < LOOP_CHANCE) {
+                    // Create a horizontal connection
+                    maze[y][x] = 0;
+                }
+            }
+        }
     }
 
     private updateFogOfWar() {
